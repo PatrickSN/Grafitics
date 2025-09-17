@@ -1,0 +1,42 @@
+# Python cache e arquivos temporários
+__pycache__/
+# Arquivos de cache do Python
+*pyc
+
+# Ambientes virtuais
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Arquivos de log
+*.log
+
+# Dados temporários
+*.csv
+*.tsv
+*.tmp
+*.bak
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+*.bat
+
+# Imagens grandes que não precisam ser versionadas
+*.tiff
+*.png
+*.svg
+
+# Arquivos de teste
+scripts/
+tests/
+test_app/*
+*.test.*
+
+# Arquivos de construcao
+build/
+dist/
+*.spec

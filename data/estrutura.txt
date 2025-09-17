@@ -1,0 +1,23 @@
+graph_app/
+│
+├── main.py
+│
+├── ui/
+│   └── gui.py
+│
+├── stats/
+│   ├── summary.py
+│   ├── tests.py
+│   └── helpers.py
+│
+├── charts/
+│   ├── plotter.py
+│   └── annotations.py
+│
+├── export/
+│   ├── save_excel.py
+│   ├── save_pdf.py
+│   └── save_fig.py
+│
+└── data/
+    └── exemplos.xlsx
