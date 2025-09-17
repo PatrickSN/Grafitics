@@ -1,4 +1,4 @@
-# 📊 Gerador de Gráficos V3
+# 📊 Grafitcs
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)  
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)  
@@ -40,6 +40,6 @@ O projeto permite realizar testes estatísticos, gerar visualizações personali
 Clone o repositório e instale as dependências:
 
 ```bash
-git clone https://github.com/seu-usuario/Gerador_GraficosV3.git
-cd Gerador_GraficosV3
+git clone https://github.com/PatrickSN/Grafitcs.git
+cd Grafitcs
 pip install -r requirements.txt
