@@ -76,8 +76,9 @@ class StatApp(tk.Tk):
         ttk.Label(left, text="T-test mode:").grid(row=8,column=0, sticky='w')
         self.ttest_mode = tk.StringVar(value='auto')
         ttk.Radiobutton(left, text="Auto", variable=self.ttest_mode, value='auto').grid(row=8,column=1, sticky='w')
-        ttk.Radiobutton(left, text="Two-groups", variable=self.ttest_mode, value='two').grid(row=8,column=2, sticky='w')
-        ttk.Radiobutton(left, text="Control vs others", variable=self.ttest_mode, value='control').grid(row=8,column=3, sticky='w')
+        ttk.Radiobutton(left, text="Two-by-two", variable=self.ttest_mode, value='chipboard').grid(row=8,column=2, sticky='w')
+        ttk.Radiobutton(left, text="Classic", variable=self.ttest_mode, value='classic').grid(row=8,column=3, sticky='w')
+        ttk.Radiobutton(left, text="Control vs others", variable=self.ttest_mode, value='control').grid(row=8,column=4, sticky='w')
 
         self.status_lbl = ttk.Label(left, text="Select file", relief='sunken', anchor='w'); self.status_lbl.grid(row=9,column=0,columnspan=4, sticky='we', pady=(6,0))
 
@@ -163,7 +164,7 @@ class StatApp(tk.Tk):
         if os.path.exists(EXAMPLE_PATH):
             self._load_path(EXAMPLE_PATH)
         else:
-            messagebox.showwarning("Example not found", f"{EXAMPLE_PATH} não encontrado.")
+            messagebox.showwarning("Example not found", f"{EXAMPLE_PATH} not found.")
 
     def _load_path(self,fpath):
         _, ext = os.path.splitext(fpath.lower()); self.current_file = fpath
@@ -173,9 +174,9 @@ class StatApp(tk.Tk):
                 self.current_sheet = sheets[0]; self.df = pd.read_excel(fpath, sheet_name=self.current_sheet)
             else:
                 self.sheet_cb['values']=[]; self.current_sheet=None; self.df = pd.read_csv(fpath)
-            self.status_lbl.config(text=f"Carregado: {os.path.basename(fpath)}"); self.populate_columns(); self.display_dataframe_preview()
+            self.status_lbl.config(text=f"Loaded: {os.path.basename(fpath)}"); self.populate_columns(); self.display_dataframe_preview()
         except Exception as e:
-            messagebox.showerror("Erro load", str(e)); self.status_lbl.config(text="Erro ao carregar arquivo.")
+            messagebox.showerror("Load error", str(e)); self.status_lbl.config(text="Error loading file.")
 
     def on_sheet_select(self,event):
         sheet = self.sheet_cb.get()
@@ -184,7 +185,7 @@ class StatApp(tk.Tk):
         try:
             self.df = pd.read_excel(self.current_file, sheet_name=sheet); self.populate_columns(); self.display_dataframe_preview()
         except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            messagebox.showerror("Error", str(e))
 
     def populate_columns(self):
         if self.df is None: return
@@ -221,9 +222,9 @@ class StatApp(tk.Tk):
         self.status_lbl.config(text="Calculating...")
         self.pmap_pairwise={}; self.pmap_vs_control={}; self.control_selected=None
         try:
-            if self.df is None: raise RuntimeError("Nenhum arquivo carregado.")
+            if self.df is None: raise RuntimeError("No files loaded.")
             group_col=self.group_col_cb.get(); value_col=self.value_col_cb.get(); control=self.control_cb.get(); self.control_selected=control
-            if not group_col or not value_col: raise RuntimeError("Escolha colunas válidas.")
+            if not group_col or not value_col: raise RuntimeError("Choose valid columns.")
             df = self.df[[group_col,value_col]].dropna().copy(); df[group_col]=df[group_col].astype(str); df[value_col]=pd.to_numeric(df[value_col],errors='coerce'); df=df.dropna(subset=[value_col])
             summ = summary_by_group(df, group_col, value_col)
             test=self.test_var.get(); alpha=float(self.pvar.get())
@@ -251,20 +252,23 @@ class StatApp(tk.Tk):
 
             # ---------------- T-test ----------------
             elif test=="T-test":
-                mode = self.ttest_mode.get()
+                self.mode = self.ttest_mode.get()
+                num_cols = len(self.df.columns)
                 unique_groups = df[group_col].dropna().astype(str).unique().tolist()
-                if mode=='auto':
-                    # two groups => two-group ttest else control vs others
-                    mode = 'two' if len(unique_groups)==2 else 'control'
-                if mode=='two':
+                if self.mode=='auto':
+                    if num_cols >= 3 and len(unique_groups) != 2: self.mode = 'chipboard'
+                    elif len(unique_groups) == 2: self.mode = 'classic'
+                    else: self.mode = 'control'
+
+                if self.mode=='classic':
                     if len(unique_groups)!=2:
-                        raise RuntimeError("Modo Two-groups exige exatamente 2 grupos na coluna selecionada.")
+                        raise RuntimeError("Mode Classic t-test requires exactly 2 groups in the selected column.")
                     gA, gB = unique_groups[0], unique_groups[1]
                     # call R t.test pair (we have simpler pairwise wrapper)
                     tt = pairwise_ttests_vs_control_r(df, group_col, value_col, control_label=gA, alpha=alpha, p_adjust_method='holm', timeout=120)
-                    # if we did control=gA it returns comparisons gA vs other(s). For two groups that will be a single row.
+                    # if we did control=gA it returns comparisons gA vs other(s). For classic that will be a single row.
                     result_text.append("T-test (R) results:\n"); result_text.append(tt.to_string(index=False))
-                    self.last_stats_df=tt; self.last_summary_df=summ; self.last_test_method=f"T-test (R, mode={mode})"
+                    self.last_stats_df=tt; self.last_summary_df=summ; self.last_test_method=f"T-test (R, mode={self.mode})"
                     # if one comparison, extract p and create pairwise map
                     for _,row in tt.iterrows():
                         comp=str(row.get('comparison',''))
@@ -280,10 +284,31 @@ class StatApp(tk.Tk):
                                 other = g2
                                 self.pmap_vs_control[str(other)] = p
 
+                elif self.mode == 'chipboard':
+                    if not len(unique_groups)!=2:
+                        raise RuntimeError("Choose the column with the factors in group_col.")
+
+                    cols = list(self.df.columns)
+                    cat_cols = [c for c in cols if not pd.api.types.is_numeric_dtype(self.df[c])]
+                    if cat_cols:
+                        for col in cat_cols:
+                            groups = self.df[col].dropna().astype(str).unique().tolist()
+                            try: 
+                                if len(groups) == 2 and control in groups:
+                                    fator_col = col
+                                    df = self.df[[fator_col, group_col,value_col]].dropna().copy()
+                                    break
+                            except:
+                                raise RuntimeError("Your table must contain at least one column with 2 unique treatments")
+
+                    
+                    tt = pairwise_ttests_vs_control_r(df, group_col, value_col, control_label=control, alpha=alpha, timeout=120, fator_col = fator_col)
+                    result_text.append(f"T-test (R) {control} vs others:\n"); result_text.append(tt.to_string(index=False))
+
                 else:
                     # control vs others (explicit)
                     if not control:
-                        raise RuntimeError("Escolha um grupo controle para T-test (control mode).")
+                        raise RuntimeError("Choose a control group for T-test (control mode).")
                     tt = pairwise_ttests_vs_control_r(df, group_col, value_col, control_label=control, alpha=alpha, p_adjust_method='holm', timeout=120)
                     result_text.append(f"T-test (R) {control} vs others:\n"); result_text.append(tt.to_string(index=False))
                     self.last_stats_df=tt; self.last_summary_df=summ; self.last_test_method="T-test (R, control-vs-others)"
@@ -300,7 +325,7 @@ class StatApp(tk.Tk):
             # ---------------- Dunnett (via R) ----------------
             elif test=="Dunnett":
                 if not control:
-                    raise RuntimeError("Escolha um grupo controle para Dunnett.")
+                    raise RuntimeError("Choose a control group for Dunnett.")
                 try:
                     dunnett_res = dunnett_test_r(df, group_col, value_col, control_label=control, alpha=alpha, timeout=180)
                 except Exception as e:
@@ -323,11 +348,11 @@ class StatApp(tk.Tk):
                     if other: self.pmap_vs_control[str(other)] = p
 
             else:
-                result_text.append("Teste não implementado.\n"); self.last_stats_df=None; self.last_summary_df=summ; self.last_test_method=None
+                result_text.append("Test not implemented.\n"); self.last_stats_df=None; self.last_summary_df=summ; self.last_test_method=None
 
-            self.analysis_df = df; self.group_col_name = group_col; self.value_col_name = value_col
+            self.analysis_df = df; self.group_col_name = group_col; self.value_col_name = value_col; self.fator_col_name = fator_col
             self.stats_text.delete("1.0",tk.END); self.stats_text.insert(tk.END, "\n".join(result_text))
-            self.status_lbl.config(text="Cálculo concluído.")
+            self.status_lbl.config(text="Calculation completed.")
         except Exception as e:
             self.status_lbl.config(text=f"Erro: {e}")
             tb = traceback.format_exc()
@@ -335,7 +360,7 @@ class StatApp(tk.Tk):
 
     # ---------- plotting ----------
     def pick_color(self):
-        c = colorchooser.askcolor(title="Escolher cor", initialcolor=self.bar_color)[1]
+        c = colorchooser.askcolor(title="Choose color", initialcolor=self.bar_color)[1]
         if c:
             self.bar_color = c
             # Atualiza a cor do botão
@@ -346,7 +371,7 @@ class StatApp(tk.Tk):
 
     def generate_chart(self):
         if not hasattr(self,'analysis_df') or self.analysis_df is None:
-            messagebox.showinfo("Atenção","Faça primeiro a análise estatística."); return
+            messagebox.showinfo("Attention","Do the statistical analysis first."); return
         # call central plot generator (it will call annotations module using our p-maps)
         # convert image size from cm to inches for matplotlib (1 in = 2.54 cm)
         try:
@@ -355,24 +380,27 @@ class StatApp(tk.Tk):
         except Exception:
             w_in, h_in = 8/2.54, 8/2.54
 
-        self.fig = generate_barplot(
-            df=self.analysis_df,
-            group_col=self.group_col_name,
-            value_col=self.value_col_name,
-            bar_color=self.bar_color,
-            pmap_pairwise=self.pmap_pairwise,
-            pmap_vs_control=self.pmap_vs_control,
-            control=self.control_selected,
-            alpha=float(self.pvar.get()),
-            show_legend=self.legend_var.get(),
-            title=self.title_ent.get() or "",
-            ylabel=self.ylabel_ent.get() or "",
-            xlabel=self.xlabel_ent.get() or "",
-            figsize=(w_in, h_in) if (w_in and h_in) else None,
-            fontsize=int(self.font_spin.get()),
-            bracket_scope=self.bracket_scope.get(),
-            color_mode=self.color_mode_var.get()
-        )
+        if self.mode == 'chipboard':
+            pass
+        else:
+            self.fig = generate_barplot(
+                df=self.analysis_df,
+                group_col=self.group_col_name,
+                value_col=self.value_col_name,
+                bar_color=self.bar_color,
+                pmap_pairwise=self.pmap_pairwise,
+                pmap_vs_control=self.pmap_vs_control,
+                control=self.control_selected,
+                alpha=float(self.pvar.get()),
+                show_legend=self.legend_var.get(),
+                title=self.title_ent.get() or "",
+                ylabel=self.ylabel_ent.get() or "",
+                xlabel=self.xlabel_ent.get() or "",
+                figsize=(w_in, h_in) if (w_in and h_in) else None,
+                fontsize=int(self.font_spin.get()),
+                bracket_scope=self.bracket_scope.get(),
+                color_mode=self.color_mode_var.get()
+            )
         # embed figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         if self.canvas_plot:

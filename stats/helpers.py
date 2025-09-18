@@ -12,11 +12,11 @@ def find_pvalue_column(df):
     """Procura colunas com 'p' ou 'padj' no nome. Retorna primeira candidata ou None."""
     if df is None: return None
     for c in df.columns:
-        for k in ('p','pvalue','p.value','p-adj','p.adj','padj','p_adj', 'pval'):
+        for k in ('p', 'p_value', 'pvalue','p.value','p-adj','p.adj','padj','p_adj', 'pval'):
             if c.lower() == k:
                 return k 
             
-    candidates = [c for c in df.columns if any(k in c.lower() for k in ('p','pvalue','p.value','p-adj','p.adj','padj','p_adj', 'pval'))]
+    candidates = [c for c in df.columns if any(k in c.lower() for k in ('p','p_value','pvalue','p.value','p-adj','p.adj','padj','p_adj', 'pval'))]
     # prefer explicit p_adj etc
     for pref in candidates:
         for c in df.columns:

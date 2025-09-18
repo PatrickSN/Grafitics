@@ -188,7 +188,8 @@ def pairwise_ttests_vs_control_r(
     control_label: str,
     alpha: float = 0.05,
     p_adjust_method: str = "holm",
-    timeout: int = 60
+    timeout: int = 60,
+    **kwargs 
 ) -> pd.DataFrame:
     """
     Para cada grupo != control, executa t.test(control, group) em R (Welch),
@@ -198,50 +199,126 @@ def pairwise_ttests_vs_control_r(
     rscript = _find_rscript()
     if not rscript:
         raise RuntimeError("Rscript não encontrado. Instale R para usar pairwise_ttests_vs_control_r().")
-
+    
     with tempfile.TemporaryDirectory() as tmpdir:
         in_csv = os.path.join(tmpdir, "input.csv")
         out_csv = os.path.join(tmpdir, "ttest_out.csv")
-        df[[group_col, value_col]].to_csv(in_csv, index=False)
+        
+        try:
+            r_code = textwrap.dedent(f"""
+                args <- commandArgs(trailingOnly = TRUE)
 
-        r_code = textwrap.dedent(f"""
-        args <- commandArgs(trailingOnly=TRUE)
-        in_csv <- args[1]
-        group_col <- args[2]
-        value_col <- args[3]
-        control <- args[4]
-        out_csv <- args[5]
-        padj_method <- args[6]
-        alpha <- as.numeric(args[7])
+                in_csv     <- args[1]
+                group_col   <- args[2]
+                fator_col   <- args[3]
+                value_col  <- args[4]
+                control    <- args[5]
+                out_csv    <- args[6]
+                alpha <- as.numeric(args[7])
 
-        d <- read.csv(in_csv, stringsAsFactors=FALSE)
-        d[[group_col]] <- as.character(d[[group_col]])
-        groups <- unique(d[[group_col]])
-        others <- setdiff(groups, control)
-        pvals <- c()
-        stats <- c()
-        names <- c()
-        for (g in others) {{
-          a <- d[d[[group_col]] == control, value_col]
-          b <- d[d[[group_col]] == g, value_col]
-          # usar t.test Welch (var not assumed equal)
-          res <- try(t.test(as.numeric(a), as.numeric(b), var.equal=FALSE), silent=TRUE)
-          if (inherits(res, "try-error")) {{
-            pvals <- c(pvals, NA)
-            stats <- c(stats, NA)
-          }} else {{
-            pvals <- c(pvals, res$p.value)
-            stats <- c(stats, res$statistic)
-          }}
-          names <- c(names, paste(control, "vs", g))
-        }}
-        p_adj <- p.adjust(pvals, method = padj_method)
-        reject <- ifelse(!is.na(p_adj) & p_adj < alpha, TRUE, FALSE)
-        out_df <- data.frame(comparison = names, statistic = stats, p_raw = pvals, p_adj = p_adj, reject = reject, stringsAsFactors=FALSE)
-        write.csv(out_df, out_csv, row.names=FALSE)
-        """).strip()
+                # instalar pacotes ausentes automaticamente (opcional)
+                needed <- c("dplyr", "rlang")
+                for (p in needed) {{
+                    if (!requireNamespace(p, quietly = TRUE)) {{
+                        install.packages(p, repos = "https://cloud.r-project.org")
+                    }}
+                }}
+                library(dplyr)
+                library(rlang)
 
-        args = [in_csv, group_col, value_col, str(control_label), out_csv, p_adjust_method, str(alpha)]
+                # Ler os dados
+                data <- read.csv(in_csv, stringsAsFactors=FALSE)
+
+                # summary (média + se)
+                summary_data <- data %>%
+                group_by(!!sym(group_col), !!sym(fator_col)) %>%
+                summarise(
+                    mean_value = mean(.data[[value_col]], na.rm = TRUE),
+                    se_value   = sd(.data[[value_col]], na.rm = TRUE) / sqrt(sum(!is.na(.data[[value_col]]))),
+                    .groups = "drop"
+                )
+
+                # t-test por grupo (group_col)
+                t_test_results <- data %>%
+                group_by(!!sym(group_col)) %>%
+                summarise(
+                    p_value = {{
+                    if (n_distinct(.data[[fator_col]]) == 2) {{
+                        lv <- unique(.data[[fator_col]])
+                        g1 <- .data[[value_col]][.data[[fator_col]] == lv[1]]
+                        g2 <- .data[[value_col]][.data[[fator_col]] == lv[2]]
+                        out <- tryCatch(t.test(g1, g2)$p.value, error = function(e) NA_real_)
+                        out
+                    }} else {{
+                        NA_real_
+                    }}
+                    }},
+                    .groups = "drop"
+                )
+
+                # juntar e adicionar asterisco conforme seu R original
+                summary_data <- summary_data %>%
+                left_join(t_test_results, by = group_col) %>%
+                mutate(asterisk = ifelse(.data[[fator_col]] == control, "", ifelse(p_value <= alpha, "*", "")))
+
+                            
+                # Resultado final com médias, SE, p-values e marcação de significância
+                out_df <- summary_data %>%
+                mutate(
+                    reject = ifelse(!is.na(p_value) & p_value <= alpha, TRUE, FALSE)
+                )
+
+                write.csv(out_df, out_csv, row.names = FALSE)
+            """).strip()
+            
+            fator_col = kwargs.get('fator_col')
+            df[[fator_col, group_col, value_col]].to_csv(in_csv, index=False)
+            if not fator_col:
+                raise ValueError
+
+            args = [in_csv, group_col, fator_col, value_col, str(control_label), out_csv, str(alpha)]
+        
+        except:
+            df[[group_col, value_col]].to_csv(in_csv, index=False)
+            r_code = textwrap.dedent(f"""
+                args <- commandArgs(trailingOnly=TRUE)
+                in_csv <- args[1]
+                group_col <- args[2]
+                value_col <- args[3]
+                control <- args[4]
+                out_csv <- args[5]
+                padj_method <- args[6]
+                alpha <- as.numeric(args[7])
+
+                d <- read.csv(in_csv, stringsAsFactors=FALSE)
+                d[[group_col]] <- as.character(d[[group_col]])
+                groups <- unique(d[[group_col]])
+                others <- setdiff(groups, control)
+                pvals <- c()
+                stats <- c()
+                names <- c()
+                for (g in others) {{
+                a <- d[d[[group_col]] == control, value_col]
+                b <- d[d[[group_col]] == g, value_col]
+                # usar t.test Welch (var not assumed equal)
+                res <- try(t.test(as.numeric(a), as.numeric(b), var.equal=FALSE), silent=TRUE)
+                if (inherits(res, "try-error")) {{
+                    pvals <- c(pvals, NA)
+                    stats <- c(stats, NA)
+                }} else {{
+                    pvals <- c(pvals, res$p.value)
+                    stats <- c(stats, res$statistic)
+                }}
+                names <- c(names, paste(control, "vs", g))
+                }}
+                p_adj <- p.adjust(pvals, method = padj_method)
+                reject <- ifelse(!is.na(p_adj) & p_adj < alpha, TRUE, FALSE)
+                out_df <- data.frame(comparison = names, statistic = stats, p_raw = pvals, p_adj = p_adj, reject = reject, stringsAsFactors=FALSE)
+                write.csv(out_df, out_csv, row.names=FALSE)
+            """).strip()
+            
+            args = [in_csv, group_col, value_col, str(control_label), out_csv, p_adjust_method, str(alpha)]
+
         stdout, stderr, _ = _run_r_script(r_code, args, timeout=timeout)
 
         if not os.path.exists(out_csv):

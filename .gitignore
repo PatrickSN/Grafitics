@@ -31,6 +31,7 @@ Thumbs.db
 *.svg
 
 # Arquivos de teste
+*.docx
 scripts/
 tests/
 test_app/*
