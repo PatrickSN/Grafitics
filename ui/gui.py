@@ -5,6 +5,7 @@ import threading
 import os
 import traceback
 
+from ui.plot_tab import PlotTab
 from stats.summary import summary_by_group
 from stats.tests import tukey_test_r, dunnett_test_r, pairwise_ttests_vs_control_r
 from stats.helpers import find_pvalue_column, parse_pair_name_for_group
@@ -22,7 +23,7 @@ class StatApp(tk.Tk):
         self.title("Grafitics-v3")
         self.state('zoomed')
         self.minsize(1920, 1080)
-        self._build_ui()
+
         # ========= estilo para o botão =========
         self.style = ttk.Style()
 
@@ -38,8 +39,26 @@ class StatApp(tk.Tk):
         self.pmap_vs_control = {}  # other_group -> p
         self.control_selected = None
 
+        
+        if not hasattr(self, 'notebook'):
+            self.notebook = ttk.Notebook(self)
+            self.notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # ---------- Nova aba de gráficos ----------
+        self.tab_plot = ttk.Frame(self.notebook)
+        self.tab_stats = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_stats, text="Statistics & Settings")
+        self.notebook.add(self.tab_plot, text="Visualization")
+
+        # dentro dessa aba, adiciona o PlotTab
+        self.plot_tab = PlotTab(self.tab_plot, fig=self.fig)
+        self.plot_tab.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        self._build_ui()
+
+
     def _build_ui(self):
-        top = ttk.Frame(self, padding=6)
+        top = ttk.Frame(self.tab_stats, padding=6)
         top.pack(side=tk.TOP, fill=tk.X)
         left = ttk.Frame(top)
         left.pack(side=tk.LEFT, padx=6)
@@ -194,7 +213,7 @@ class StatApp(tk.Tk):
                    command=lambda: export_report_pdf(self)).grid(row=9, column=1)
 
         # ========= bottom =========
-        bottom = ttk.Frame(self, padding=6)
+        bottom = ttk.Frame(self.tab_stats, padding=6)
         bottom.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         frame_table = ttk.LabelFrame(bottom, text="Data & preview")
         frame_table.pack(side=tk.LEFT, fill=tk.BOTH,
@@ -587,6 +606,12 @@ class StatApp(tk.Tk):
                 color_mode=self.color_mode_var.get()
             )
         # embed figure
+        """
+        """
+
+        self.plot_tab.set_figure(self.fig, int(self.dpi_spin.get()), (w_in, h_in))
+
+        
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         if self.canvas_plot:
             self.canvas_plot.get_tk_widget().destroy()
@@ -596,3 +621,4 @@ class StatApp(tk.Tk):
         widget = canvas.get_tk_widget()
         widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas_plot = canvas
+

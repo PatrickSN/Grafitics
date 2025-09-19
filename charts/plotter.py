@@ -296,8 +296,8 @@ def generate_multi_barplot(
     handles, labs = ax.get_legend_handles_labels()
     by_label = dict(zip(labs, handles))  # remove duplicados mantendo o último
     ax.legend(by_label.values(), by_label.keys(),
-            fontsize=max(10, fontsize-2), ncol=2, frameon=False, loc="upper center")
-
+            fontsize=max(10, fontsize-2))
+    #ax.legend(by_label.values(), by_label.keys(),fontsize=max(10, fontsize-2), ncol=2, frameon=False, loc="upper center")
 
     # ajuste de limites para margem superior
     # usar máximo das médias + erro para cálculo de offset
