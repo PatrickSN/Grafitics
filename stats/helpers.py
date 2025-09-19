@@ -36,6 +36,9 @@ def parse_pair_name_for_group(comp_str, control_label=None):
         if sep in s:
             parts = [p.strip() for p in s.split(sep) if p.strip()]
             if len(parts)>=2:
+                if ' : ' in parts[0]:
+                    part = parts[0].split(' : ')
+                    return  part[0], part[1],parts[1]
                 return parts[0], parts[1]
     # fallback: if control_label is present try to isolate other
     if control_label and control_label in s:

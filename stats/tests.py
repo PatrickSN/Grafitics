@@ -212,7 +212,7 @@ def pairwise_ttests_vs_control_r(
                 group_col   <- args[2]
                 fator_col   <- args[3]
                 value_col  <- args[4]
-                control    <- args[5]
+                padj_method <- args[5]
                 out_csv    <- args[6]
                 alpha <- as.numeric(args[7])
 
@@ -226,48 +226,45 @@ def pairwise_ttests_vs_control_r(
                 library(dplyr)
                 library(rlang)
 
+
+                names <- c()
+                stats <- c()
+
                 # Ler os dados
                 data <- read.csv(in_csv, stringsAsFactors=FALSE)
 
-                # summary (média + se)
-                summary_data <- data %>%
-                group_by(!!sym(group_col), !!sym(fator_col)) %>%
-                summarise(
-                    mean_value = mean(.data[[value_col]], na.rm = TRUE),
-                    se_value   = sd(.data[[value_col]], na.rm = TRUE) / sqrt(sum(!is.na(.data[[value_col]]))),
-                    .groups = "drop"
-                )
-
-                # t-test por grupo (group_col)
+                # t-test por grupo (group_col) — agora também captura a estatística t e a string de comparação
                 t_test_results <- data %>%
                 group_by(!!sym(group_col)) %>%
-                summarise(
-                    p_value = {{
-                    if (n_distinct(.data[[fator_col]]) == 2) {{
-                        lv <- unique(.data[[fator_col]])
-                        g1 <- .data[[value_col]][.data[[fator_col]] == lv[1]]
-                        g2 <- .data[[value_col]][.data[[fator_col]] == lv[2]]
-                        out <- tryCatch(t.test(g1, g2)$p.value, error = function(e) NA_real_)
-                        out
+                group_modify(~{{
+                    df <- .
+                    lv <- unique(df[[fator_col]])
+                    if (length(lv) == 2) {{
+                    g1 <- df[[value_col]][df[[fator_col]] == lv[1]]
+                    g2 <- df[[value_col]][df[[fator_col]] == lv[2]]
+                    res <- tryCatch(t.test(g1, g2, var.equal = FALSE), error = function(e) NULL)
+                    pval <- if (is.null(res)) NA_real_ else res$p.value
+                    stat <- if (is.null(res)) NA_real_ else as.numeric(res$statistic)
+                    comp <- paste0(unique(df[[group_col]]), " : ", lv[1], " vs ", lv[2])
+                    tibble(p_value = pval, statistic = stat, comparison = comp)
                     }} else {{
-                        NA_real_
+                    tibble(p_value = NA_real_, statistic = NA_real_, comparison = NA_character_)
                     }}
-                    }},
-                    .groups = "drop"
-                )
+                }}) %>% ungroup()
 
-                # juntar e adicionar asterisco conforme seu R original
-                summary_data <- summary_data %>%
-                left_join(t_test_results, by = group_col) %>%
-                mutate(asterisk = ifelse(.data[[fator_col]] == control, "", ifelse(p_value <= alpha, "*", "")))
+                # extrai vetores para gerar a saída no mesmo formato do teste-t.r
+                pvals <- t_test_results$p_value
+                stats <- t_test_results$statistic
+                first_col <- names(t_test_results)[1]
+                last_col  <- names(t_test_results)[ncol(t_test_results)]
+                names <- paste0(as.character(t_test_results[[first_col]]), as.character(t_test_results[[last_col]]))
 
-                            
-                # Resultado final com médias, SE, p-values e marcação de significância
-                out_df <- summary_data %>%
-                mutate(
-                    reject = ifelse(!is.na(p_value) & p_value <= alpha, TRUE, FALSE)
-                )
+                p_adj <- p.adjust(pvals, method = padj_method)
+                reject <- ifelse(!is.na(p_adj) & p_adj < alpha, TRUE, FALSE)
 
+
+                out_df <- data.frame(comparison = names, statistic = stats, p_raw = pvals, p_adj = p_adj, reject = reject, stringsAsFactors=FALSE)
+                # Salvar em CSV
                 write.csv(out_df, out_csv, row.names = FALSE)
             """).strip()
             
@@ -276,7 +273,7 @@ def pairwise_ttests_vs_control_r(
             if not fator_col:
                 raise ValueError
 
-            args = [in_csv, group_col, fator_col, value_col, str(control_label), out_csv, str(alpha)]
+            args = [in_csv, group_col, fator_col, value_col, p_adjust_method, out_csv, str(alpha)]
         
         except:
             df[[group_col, value_col]].to_csv(in_csv, index=False)
