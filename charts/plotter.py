@@ -58,9 +58,9 @@ def generate_barplot(
     ax.set_ylim(0, means.values.max() * 1.2)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=fontsize)
-    ax.set_ylabel(ylabel or "", fontsize=fontsize)
-    ax.set_xlabel(xlabel or "", fontsize=fontsize)
-    ax.set_title(title or "", fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_title(title, fontsize=fontsize)
 
     # Pontos individuais
     sns.stripplot(x=group_col, y=value_col, data=df, hue=group_col,
@@ -200,9 +200,9 @@ def generate_barplot_ttest(
     
     ax.set_ylim(0, y_max)
     ax.set_xticklabels(ordens, rotation=45, ha='right', fontsize=fontsize)
-    ax.set_ylabel(ylabel or "", fontsize=fontsize)
-    ax.set_xlabel(xlabel or "", fontsize=fontsize)
-    ax.set_title(title or "", fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_title(title, fontsize=fontsize)
 
     sns.despine()
     fig.tight_layout()
@@ -287,9 +287,9 @@ def generate_multi_barplot(
     # layout e rótulos
     ax.set_xticks(x)
     ax.set_xticklabels([str(l) for l in labels], rotation=45, ha='right', fontsize=fontsize)
-    ax.set_xlabel(xlabel or "", fontsize=fontsize)
-    ax.set_ylabel(ylabel or "", fontsize=fontsize)
-    ax.set_title(title or "", fontsize=fontsize)
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.set_title(title, fontsize=fontsize)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 

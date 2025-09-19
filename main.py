@@ -55,6 +55,5 @@ def ensure_r_installed():
 
 if __name__ == "__main__":
     ensure_r_installed()
-    install_r_windows()
     app = StatApp()
     app.mainloop()

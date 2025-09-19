@@ -8,7 +8,7 @@ def save_chart(fig, figsize_inches=None, dpi_override=None):
     Usamos o DPI atualmente associado à figura para preservar o tamanho esperado.
     """
     if fig is None:
-        messagebox.showinfo("Atenção", "Gere um gráfico primeiro.")
+        messagebox.showinfo("Attention", "Generate a graph first.")
         return
     fpath = filedialog.asksaveasfilename(defaultextension=".svg",
                                          filetypes=[("SVG", "*.svg"), ("TIFF", "*.tiff")])
@@ -46,6 +46,6 @@ def save_chart(fig, figsize_inches=None, dpi_override=None):
 
         # Salva a figura; para SVG o dpi não altera o vetor, para TIFF controla a resolução
         fig.savefig(fpath, **save_kwargs)
-        messagebox.showinfo("Salvo", f"Figura salva em {fpath}")
+        messagebox.showinfo("Saved", f"Figure saved in {fpath}")
     except Exception as e:
-        messagebox.showerror("Erro ao salvar", str(e))
+        messagebox.showerror("Error when saving", str(e))

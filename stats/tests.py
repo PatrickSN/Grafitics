@@ -32,7 +32,7 @@ def _run_r_script(r_code: str, args: list, timeout: int = 60):
     """
     rscript = _find_rscript()
     if not rscript:
-        raise RuntimeError("Rscript não encontrado no PATH. Instale R e adicione Rscript ao PATH.")
+        raise RuntimeError("Rscript not found in PATH. Install R and add Rscript to PATH.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         script_path = os.path.join(tmpdir, "run_r_script.R")
@@ -45,10 +45,10 @@ def _run_r_script(r_code: str, args: list, timeout: int = 60):
             # sucesso: stdout/stderr disponíveis se precisar
             return completed.stdout, completed.stderr, tmpdir
         except subprocess.CalledProcessError as e:
-            msg = f"Rscript retornou código de erro {e.returncode}.\nSTDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
+            msg = f"Rscript returned error code {e.returncode}.\nSTDOUT:\n{e.stdout}\n\nSTDERR:\n{e.stderr}"
             raise RuntimeError(msg)
         except subprocess.TimeoutExpired as e:
-            raise RuntimeError(f"Rscript timeout depois de {timeout}s. stdout: {e.stdout} stderr: {e.stderr}")
+            raise RuntimeError(f"Rscript timeout after {timeout}s. stdout: {e.stdout} stderr: {e.stderr}")
 
 
 def tukey_test_r(df: pd.DataFrame, group_col: str, value_col: str, alpha: float =0.05, timeout: int = 60) -> pd.DataFrame:
@@ -58,7 +58,7 @@ def tukey_test_r(df: pd.DataFrame, group_col: str, value_col: str, alpha: float 
     """
     rscript = _find_rscript()
     if not rscript:
-        raise RuntimeError("Rscript não encontrado. Instale R para usar tukey_test_r().")
+        raise RuntimeError("Rscript not found. Install R to use tukey_test_r().")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         in_csv = os.path.join(tmpdir, "input.csv")
@@ -98,7 +98,7 @@ def tukey_test_r(df: pd.DataFrame, group_col: str, value_col: str, alpha: float 
         stdout, stderr, _ = _run_r_script(r_code, args, timeout=timeout)
 
         if not os.path.exists(out_csv):
-            raise RuntimeError(f"R não gerou saída esperada. stdout: {stdout}\\nstderr: {stderr}")
+            raise RuntimeError(f"R did not generate expected output. stdout:{stdout}\\nstderr: {stderr}")
 
         res = pd.read_csv(out_csv)
         # tentar extrair group1/group2 se comparison tem ' - ' or ' - ' or ' vs ' or '-'
@@ -135,7 +135,7 @@ def dunnett_test_r(df: pd.DataFrame, group_col: str, value_col: str, control_lab
     """
     rscript = _find_rscript()
     if not rscript:
-        raise RuntimeError("Rscript não encontrado. Instale R para usar dunnett_test_r().")
+        raise RuntimeError("Rscript not found. Install R to use dunnett_test_r().")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         in_csv = os.path.join(tmpdir, "input.csv")
@@ -175,7 +175,7 @@ def dunnett_test_r(df: pd.DataFrame, group_col: str, value_col: str, control_lab
         stdout, stderr, _ = _run_r_script(r_code, args, timeout=timeout)
 
         if not os.path.exists(out_csv):
-            raise RuntimeError(f"R não gerou saída esperada. stdout: {stdout}\\nstderr: {stderr}")
+            raise RuntimeError(f"R did not generate expected output. stdout: {stdout}\\nstderr: {stderr}")
 
         res = pd.read_csv(out_csv)
         return res
@@ -198,7 +198,7 @@ def pairwise_ttests_vs_control_r(
     """
     rscript = _find_rscript()
     if not rscript:
-        raise RuntimeError("Rscript não encontrado. Instale R para usar pairwise_ttests_vs_control_r().")
+        raise RuntimeError("Rscript not found. Install R to use pairwise_ttests_vs_control_r().")
     
     with tempfile.TemporaryDirectory() as tmpdir:
         in_csv = os.path.join(tmpdir, "input.csv")
@@ -319,7 +319,7 @@ def pairwise_ttests_vs_control_r(
         stdout, stderr, _ = _run_r_script(r_code, args, timeout=timeout)
 
         if not os.path.exists(out_csv):
-            raise RuntimeError(f"R não gerou saída esperada. stdout: {stdout}\\nstderr: {stderr}")
+            raise RuntimeError(f"R did not generate expected output. stdout: {stdout}\\nstderr: {stderr}")
 
         res = pd.read_csv(out_csv)
         return res

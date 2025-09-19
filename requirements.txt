@@ -4,3 +4,6 @@ pandas
 seaborn
 reportlab
 networkx
+scipy
+statsmodels
+subprocess

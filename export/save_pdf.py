@@ -6,7 +6,7 @@ import io
 
 def export_report_pdf(app):
     if app.last_summary_df is None:
-        messagebox.showinfo("Atenção","Execute a análise antes de exportar.")
+        messagebox.showinfo("Warning","Run analysis before exporting.")
         return
     fpath = filedialog.asksaveasfilename(defaultextension=".pdf",
                                          filetypes=[("PDF","*.pdf")])
@@ -21,9 +21,9 @@ def export_report_pdf(app):
     c = canvas.Canvas(fpath, pagesize=A4)
     width, height = A4
     c.setFont("Helvetica-Bold",14)
-    c.drawString(40, height-40, "Relatório estatístico")
+    c.drawString(40, height-40, "Statistical report")
     c.drawImage(img, 40, height-300, width=500, height=250)
     c.showPage()
     c.save()
 
-    messagebox.showinfo("Exportado", f"PDF salvo em {fpath}")
+    messagebox.showinfo("Exported", f"PDF saved in {fpath}")

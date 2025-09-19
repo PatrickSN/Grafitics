@@ -20,7 +20,7 @@ EXAMPLE_PATH = os.path.join("data", "exemplos.xlsx")
 class StatApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Grafitics-v3")
+        self.title("Grafitics: personalized statistics in graphs and in real time.")
         self.state('zoomed')
         self.minsize(1920, 1080)
 
@@ -578,9 +578,9 @@ class StatApp(tk.Tk):
                 x_col=self.group_col_name,
                 group_col=self.fator_col_name,
                 value_col=self.value_col_name,
-                title=self.title_ent.get() or "",
-                ylabel=self.ylabel_ent.get() or "",
-                xlabel=self.xlabel_ent.get() or "",
+                title=self.title_ent.get(),
+                ylabel=self.ylabel_ent.get(),
+                xlabel=self.xlabel_ent.get(),
                 alpha=float(self.pvar.get()),
                 figsize=(w_in, h_in) if (w_in and h_in) else None,
                 fontsize=int(self.font_spin.get()),
@@ -597,9 +597,9 @@ class StatApp(tk.Tk):
                 control=self.control_selected,
                 alpha=float(self.pvar.get()),
                 show_legend=self.legend_var.get(),
-                title=self.title_ent.get() or "",
-                ylabel=self.ylabel_ent.get() or "",
-                xlabel=self.xlabel_ent.get() or "",
+                title=self.title_ent.get(),
+                ylabel=self.ylabel_ent.get(),
+                xlabel=self.xlabel_ent.get(),
                 figsize=(w_in, h_in) if (w_in and h_in) else None,
                 fontsize=int(self.font_spin.get()),
                 bracket_scope=self.bracket_scope.get(),
