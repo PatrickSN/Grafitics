@@ -18,7 +18,7 @@ def install_r_linux():
         messagebox.showwarning("Grafitics-Message","❌ Erro ao instalar o R:", e)
 
 def install_r_windows():
-    url = "https://cloud.r-project.org/bin/windows/base/R-4.4.1-win.exe"
+    url = "https://cloud.r-project.org/bin/windows/base/R-4.5.1-win.exe"
     installer = "R-installer.exe"
     
     messagebox.showwarning("Grafitics-Message","⬇️ Baixando instalador do R...")
@@ -49,11 +49,12 @@ def ensure_r_installed():
         elif os_type == "Darwin":  # macOS
             install_r_mac()
         else:
-            messagebox.showwarning("Grafitics-Message","❌ Sistema não suportado para instalação automática.")
+            messagebox.showwarning("Grafitics-Message","❌ Sistema não suportado para instalação automática. Por favor, instale o R manualmente.")
 
 
 
 if __name__ == "__main__":
     ensure_r_installed()
+    install_r_windows()
     app = StatApp()
     app.mainloop()
